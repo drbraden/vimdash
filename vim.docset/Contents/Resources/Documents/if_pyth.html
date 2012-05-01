@@ -1,0 +1,423 @@
+<HTML>
+<HEAD>
+<META HTTP-EQUIV="Content-type" content="text/html; charset=ISO-8859-1">
+<TITLE>Vim documentation: if_pyth</TITLE>
+</HEAD>
+<BODY BGCOLOR="#ffffff">
+<H1>Vim documentation: if_pyth</H1>
+<A NAME="top"></A>
+<A HREF="index.html">main help file</A>
+
+<HR>
+<PRE>
+
+*<A NAME="if_pyth.txt"></A><B>if_pyth.txt</B>*   For Vim version 7.3.  Last change: 2010 Aug 13
+
+
+		  VIM REFERENCE MANUAL    by Paul Moore
+
+
+
+The <A HREF="#Python">Python</A> Interface to Vim				*<A NAME="python"></A><B>python</B>* *<A NAME="Python"></A><B>Python</B>*
+
+1. Commands			|<A HREF="#python-commands">python-commands</A>|
+2. The vim module		|<A HREF="#python-vim">python-vim</A>|
+3. Buffer <A HREF="index.html#objects">objects</A>		|<A HREF="#python-buffer">python-buffer</A>|
+4. Range <A HREF="index.html#objects">objects</A>		|<A HREF="#python-range">python-range</A>|
+5. Window <A HREF="index.html#objects">objects</A>		|<A HREF="#python-window">python-window</A>|
+6. Dynamic loading		|<A HREF="#python-dynamic">python-dynamic</A>|
+7. <A HREF="#Python">Python</A> 3			|<A HREF="#python3">python3</A>|
+
+{Vi does not have any of these commands}
+
+The <A HREF="#Python">Python</A> 2.x interface is available only when Vim was compiled with the
+|<A HREF="various.html#+python">+python</A>| feature.
+The <A HREF="#Python">Python</A> 3 interface is available only when Vim was compiled with the
+|<A HREF="various.html#+python3">+python3</A>| feature.
+
+==============================================================================
+
+1. Commands						*<A NAME="python-commands"></A><B>python-commands</B>*
+
+
+					*<A NAME=":python"></A><B>:python</B>* *<A NAME=":py"></A><B>:py</B>* *<A NAME="E205"></A><B>E205</B>* *<A NAME="E263"></A><B>E263</B>* *<A NAME="E264"></A><B>E264</B>*
+:[range]py[thon] {stmt}
+			Execute <A HREF="#Python">Python</A> statement {stmt}.
+
+:[range]py[thon] <A HREF="change.html#&lt;&lt;">&lt;&lt;</A> {endmarker}
+{script}
+{endmarker}
+			Execute <A HREF="#Python">Python</A> <A HREF="usr_41.html#script">script</A> {script}.
+			Note: This command doesn't work when the <A HREF="#Python">Python</A>
+			feature wasn't compiled in.  To avoid <A HREF="message.html#errors">errors</A>, see
+			|<A HREF="if_perl.html#script-here">script-here</A>|.
+
+{endmarker} must NOT be preceded by any white space.  If {endmarker} is
+omitted from after the &quot;<A HREF="change.html#&lt;&lt;">&lt;&lt;</A>&quot;, a dot '<A HREF="repeat.html#.">.</A>' must be used after {script}, like
+for the |<A HREF="insert.html#:append">:append</A>| and |<A HREF="insert.html#:insert">:insert</A>| commands.
+This form of the |<A HREF="#:python">:python</A>| command is mainly useful for including python code
+in Vim scripts.
+
+Example:
+<B>	function! IcecreamInitialize()</B>
+<B>	python &lt;&lt; EOF</B>
+<B>	class StrawberryIcecream:</B>
+<B>		def __call__(self):</B>
+<B>			print 'EAT ME'</B>
+<B>	EOF</B>
+<B>	endfunction</B>
+ 
+Note: <A HREF="#Python">Python</A> is very sensitive to the indenting.  Also make sure the &quot;class&quot;
+line and &quot;EOF&quot; <A HREF="diff.html#do">do</A> not have any indent.
+
+
+							*<A NAME=":pyfile"></A><B>:pyfile</B>* *<A NAME=":pyf"></A><B>:pyf</B>*
+:[range]pyf[ile] <A HREF="editing.html#{file}">{file}</A>
+			Execute the <A HREF="#Python">Python</A> <A HREF="usr_41.html#script">script</A> in <A HREF="editing.html#{file}">{file}</A>.  The whole
+			argument is used <A HREF="motion.html#as">as</A> a single file name.  {not in Vi}
+
+Both of these commands <A HREF="diff.html#do">do</A> essentially the same thing - they execute a piece of
+<A HREF="#Python">Python</A> code, with the &quot;current range&quot; |<A HREF="#python-range">python-range</A>| set to the given line
+range.
+
+In the <A HREF="change.html#case">case</A> of <A HREF="#:python">:python</A>, the code to execute is in the command-line.
+In the <A HREF="change.html#case">case</A> of <A HREF="#:pyfile">:pyfile</A>, the code to execute is the contents of the given file.
+
+<A HREF="#Python">Python</A> commands cannot be used in the |<A HREF="eval.html#sandbox">sandbox</A>|.
+
+To pass arguments you need to set sys.argv[] explicitly.  Example:
+
+<B>	:python import sys</B>
+<B>	:python sys.argv = ["foo", "bar"]</B>
+<B>	:pyfile myscript.py</B>
+
+
+Here are some examples					*<A NAME="python-examples"></A><B>python-examples</B>* 
+
+<B>	:python from vim import *</B>
+<B>	:python from string import upper</B>
+<B>	:python current.line = upper(current.line)</B>
+<B>	:python print "Hello"</B>
+<B>	:python str = current.buffer[42]</B>
+
+(Note that changes - like the imports - persist from one command to the next,
+just like in the <A HREF="#Python">Python</A> interpreter.)
+
+==============================================================================
+
+2. The vim module					*<A NAME="python-vim"></A><B>python-vim</B>*
+
+<A HREF="#Python">Python</A> code gets all of its access to vim (with one exception - see
+|<A HREF="#python-output">python-output</A>| below) via the &quot;vim&quot; module.  The vim module implements two
+methods, three constants, and one error object.  You need to import the vim
+module before using <A HREF="motion.html#it">it</A>:
+<B>	:python import vim</B>
+
+Overview
+<B>	:py print "Hello"		# displays a message</B>
+<B>	:py vim.command(cmd)		# execute an Ex command</B>
+<B>	:py w = vim.windows[n]		# gets window "n"</B>
+<B>	:py cw = vim.current.window	# gets the current window</B>
+<B>	:py b = vim.buffers[n]		# gets buffer "n"</B>
+<B>	:py cb = vim.current.buffer	# gets the current buffer</B>
+<B>	:py w.height = lines		# sets the window height</B>
+<B>	:py w.cursor = (row, col)	# sets the window cursor position</B>
+<B>	:py pos = w.cursor		# gets a tuple (row, col)</B>
+<B>	:py name = b.name		# gets the buffer file name</B>
+<B>	:py line = b[n]			# gets a line from the buffer</B>
+<B>	:py lines = b[n:m]		# gets a list of lines</B>
+<B>	:py num = len(b)		# gets the number of lines</B>
+<B>	:py b[n] = str			# sets a line in the buffer</B>
+<B>	:py b[n:m] = [str1, str2, str3]	# sets a number of lines at once</B>
+<B>	:py del b[n]			# deletes a line</B>
+<B>	:py del b[n:m]			# deletes a number of lines</B>
+
+
+Methods of the &quot;vim&quot; module
+
+
+vim.command(str)					*<A NAME="python-command"></A><B>python-command</B>*
+	Executes the vim (ex-mode) command str.  Returns None.
+	Examples:
+<B>	    :py vim.command("set tw=72")</B>
+<B>	    :py vim.command("%s/aaa/bbb/g")</B>
+ 	The following definition executes <A HREF="intro.html#Normal">Normal</A> mode commands:
+<B>		def normal(str):</B>
+<B>			vim.command("normal "+str)</B>
+<B>		# Note the use of single quotes to delimit a string containing</B>
+<B>		# double quotes</B>
+<B>		normal('"a2dd"aP')</B>
+
+ 								*<A NAME="E659"></A><B>E659</B>*
+	The &quot;<A HREF="#:python">:python</A>&quot; command cannot be used recursively with <A HREF="#Python">Python</A> 2.2 and
+	older.  This only works with <A HREF="#Python">Python</A> 2.3 and later:
+<B>	    :py vim.command("python print 'Hello again Python'")</B>
+
+
+vim.eval(str)						*<A NAME="python-eval"></A><B>python-eval</B>*
+	Evaluates the <A HREF="eval.html#expression">expression</A> str using the vim internal <A HREF="eval.html#expression">expression</A>
+	evaluator (see |<A HREF="eval.html#expression">expression</A>|).  Returns the expression result <A HREF="motion.html#as">as</A>:
+	- a string if the Vim <A HREF="eval.html#expression">expression</A> evaluates to a string or number
+	- a list if the Vim <A HREF="eval.html#expression">expression</A> evaluates to a Vim list
+	- a dictionary if the Vim <A HREF="eval.html#expression">expression</A> evaluates to a Vim dictionary
+	<A HREF="eval.html#Dictionaries">Dictionaries</A> and lists are recursively expanded.
+	Examples:
+<B>	    :py text_width = vim.eval("&amp;tw")</B>
+<B>	    :py str = vim.eval("12+12")		# NB result is a string! Use</B>
+<B>						# string.atoi() to convert to</B>
+<B>						# a number.</B>
+
+<B>	    :py tagList = vim.eval('taglist("eval_expr")')</B>
+ 	The latter will return a <A HREF="#python">python</A> list of <A HREF="#python">python</A> dicts, for instance:
+	[{'cmd': '/^eval_expr(arg, nextcmd)$/', 'static': 0, 'name':
+	'eval_expr', 'kind': '<A HREF="motion.html#f">f</A>', 'filename': './src/eval.c'}]
+
+
+
+Error object of the &quot;vim&quot; module
+
+
+vim.error						*<A NAME="python-error"></A><B>python-error</B>*
+	Upon encountering a Vim error, <A HREF="#Python">Python</A> raises an exception of type
+	vim.error.
+	Example:
+<B>		try:</B>
+<B>			vim.command("put a")</B>
+<B>		except vim.error:</B>
+<B>			# nothing in register a</B>
+
+Constants of the &quot;vim&quot; module
+
+	Note that these are not actually constants - you could reassign them.
+	But this is silly, <A HREF="motion.html#as">as</A> you would then lose access to the vim <A HREF="index.html#objects">objects</A>
+	to which the <A HREF="eval.html#variables">variables</A> referred.
+
+
+vim.buffers						*<A NAME="python-buffers"></A><B>python-buffers</B>*
+	A sequence object providing access to the list of vim <A HREF="windows.html#buffers">buffers</A>.  The
+	object supports the following operations:
+<B>	    :py b = vim.buffers[i]	# Indexing (read-only)</B>
+<B>	    :py b in vim.buffers	# Membership test</B>
+<B>	    :py n = len(vim.buffers)	# Number of elements</B>
+<B>	    :py for b in vim.buffers:	# Sequential access</B>
+ 
+
+vim.windows						*<A NAME="python-windows"></A><B>python-windows</B>*
+	A sequence object providing access to the list of vim <A HREF="windows.html#windows">windows</A>.  The
+	object supports the following operations:
+<B>	    :py w = vim.windows[i]	# Indexing (read-only)</B>
+<B>	    :py w in vim.windows	# Membership test</B>
+<B>	    :py n = len(vim.windows)	# Number of elements</B>
+<B>	    :py for w in vim.windows:	# Sequential access</B>
+ 
+
+vim.current						*<A NAME="python-current"></A><B>python-current</B>*
+	An object providing access (via specific attributes) to various
+	&quot;current&quot; <A HREF="index.html#objects">objects</A> available in <A HREF="options.html#vim:">vim:</A>
+		vim.current.line	The current line (RW)		String
+		vim.current.buffer	The current buffer (RO)		Buffer
+		vim.current.window	The current <A HREF="windows.html#window">window</A> (RO)		Window
+		vim.current.range	The current line range (RO)	Range
+
+	The last <A HREF="change.html#case">case</A> deserves a little explanation.  When the <A HREF="#:python">:python</A> or
+	<A HREF="#:pyfile">:pyfile</A> command specifies a range, this range of lines becomes the
+	&quot;current range&quot;.  A range is a bit like a buffer, but with all access
+	restricted to a subset of lines.  See |<A HREF="#python-range">python-range</A>| for more details.
+
+
+
+Output from <A HREF="#Python">Python</A>					*<A NAME="python-output"></A><B>python-output</B>*
+	Vim displays all <A HREF="#Python">Python</A> code output in the Vim message area.  <A HREF="intro.html#Normal">Normal</A>
+	output appears <A HREF="motion.html#as">as</A> information <A HREF="message.html#messages">messages</A>, and error output appears <A HREF="motion.html#as">as</A>
+	error <A HREF="message.html#messages">messages</A>.
+
+	In implementation terms, this means that all output to sys.stdout
+	(including the output from print statements) appears <A HREF="motion.html#as">as</A> information
+	<A HREF="message.html#messages">messages</A>, and all output to sys.stderr (including error tracebacks)
+	appears <A HREF="motion.html#as">as</A> error <A HREF="message.html#messages">messages</A>.
+
+
+							*<A NAME="python-input"></A><B>python-input</B>*
+	Input (via sys.stdin, including <A HREF="eval.html#input()">input()</A> and raw_input()) is not
+	supported, and may cause the program to crash.  This should probably be
+	fixed.
+
+==============================================================================
+
+3. Buffer <A HREF="index.html#objects">objects</A>					*<A NAME="python-buffer"></A><B>python-buffer</B>*
+
+Buffer <A HREF="index.html#objects">objects</A> represent vim <A HREF="windows.html#buffers">buffers</A>.  You can obtain them in a number of ways:
+	- via vim.current.buffer (|<A HREF="#python-current">python-current</A>|)
+	- from indexing vim.buffers (|<A HREF="#python-buffers">python-buffers</A>|)
+	- from the &quot;buffer&quot; attribute of a window (|<A HREF="#python-window">python-window</A>|)
+
+Buffer <A HREF="index.html#objects">objects</A> have one read-only attribute - name - the full file name for
+the buffer.  They also have three methods (append, <A HREF="motion.html#mark">mark</A>, and range; see below).
+
+You can also treat buffer <A HREF="index.html#objects">objects</A> <A HREF="motion.html#as">as</A> sequence <A HREF="index.html#objects">objects</A>.  In this context, they
+act <A HREF="motion.html#as">as</A> if they were lists (yes, they are mutable) of strings, with each
+element being a line of the buffer.  All of the usual sequence operations,
+including indexing, index assignment, slicing and <A HREF="eval.html#slice">slice</A> assignment, work <A HREF="motion.html#as">as</A>
+you would expect.  Note that the result of indexing (slicing) a buffer is a
+string (list of strings).  This has one unusual consequence - b[:] is different
+from <A HREF="motion.html#b">b</A>.  In particular, &quot;b[:] = None&quot; deletes the whole of the buffer, whereas
+&quot;<A HREF="motion.html#b">b</A> = None&quot; merely updates the variable <A HREF="motion.html#b">b</A>, with no effect on the buffer.
+
+Buffer indexes start at zero, <A HREF="motion.html#as">as</A> is normal in <A HREF="#Python">Python</A>.  This differs from vim
+line numbers, which start from 1.  This is particularly relevant when dealing
+with marks (see below) which use vim line numbers.
+
+The buffer object methods are:
+	b.append(str)	Append a line to the buffer
+	b.append(str, nr)  Idem, below line &quot;nr&quot;
+	b.append(list)	Append a list of lines to the buffer
+			Note that the option of supplying a list of strings to
+			the append method differs from the equivalent method
+			for Python's built-in list <A HREF="index.html#objects">objects</A>.
+	b.append(list, nr)  Idem, below line &quot;nr&quot;
+	b.mark(name)	Return a tuple (row,col) representing the position
+			of the named <A HREF="motion.html#mark">mark</A> (can also get the []&quot;&lt;&gt; marks)
+	b.range(s,e)	Return a range object (see |<A HREF="#python-range">python-range</A>|) which
+			represents the part of the given buffer between line
+			numbers s and e |<A HREF="motion.html#inclusive">inclusive</A>|.
+
+Note that when adding a line <A HREF="motion.html#it">it</A> must not contain a line break character '\n'.
+A trailing '\n' is allowed and ignored, so that you can <A HREF="diff.html#do">do</A>:
+<B>	:py b.append(f.readlines())</B>
+
+Examples (assume <A HREF="motion.html#b">b</A> is the current buffer)
+<B>	:py print b.name		# write the buffer file name</B>
+<B>	:py b[0] = "hello!!!"		# replace the top line</B>
+<B>	:py b[:] = None			# delete the whole buffer</B>
+<B>	:py del b[:]			# delete the whole buffer</B>
+<B>	:py b[0:0] = [ "a line" ]	# add a line at the top</B>
+<B>	:py del b[2]			# delete a line (the third)</B>
+<B>	:py b.append("bottom")		# add a line at the bottom</B>
+<B>	:py n = len(b)			# number of lines</B>
+<B>	:py (row,col) = b.mark('a')	# named mark</B>
+<B>	:py r = b.range(1,5)		# a sub-range of the buffer</B>
+
+==============================================================================
+
+4. Range <A HREF="index.html#objects">objects</A>					*<A NAME="python-range"></A><B>python-range</B>*
+
+Range <A HREF="index.html#objects">objects</A> represent a part of a vim buffer.  You can obtain them in a
+number of ways:
+	- via vim.current.range (|<A HREF="#python-current">python-current</A>|)
+	- from a buffer's <A HREF="eval.html#range()">range()</A> method (|<A HREF="#python-buffer">python-buffer</A>|)
+
+A range object is almost identical in operation to a buffer object.  However,
+all operations are restricted to the lines within the range (this line range
+can, of course, change <A HREF="motion.html#as">as</A> a result of <A HREF="eval.html#slice">slice</A> assignments, line deletions, or
+the range.append() method).
+
+The range object attributes are:
+	r.start		Index of first line into the buffer
+	r.end		Index of last line into the buffer
+
+The range object methods are:
+	r.append(str)	Append a line to the range
+	r.append(str, nr)  Idem, after line &quot;nr&quot;
+	r.append(list)	Append a list of lines to the range
+			Note that the option of supplying a list of strings to
+			the append method differs from the equivalent method
+			for Python's built-in list <A HREF="index.html#objects">objects</A>.
+	r.append(list, nr)  Idem, after line &quot;nr&quot;
+
+Example (assume <A HREF="change.html#r">r</A> is the current range):
+	# Send all lines in a range to the default printer
+	vim.command(&quot;&#37;d,&#37;dhardcopy!&quot; <A HREF="motion.html#&#37;">&#37;</A> (r.start+1,r.end+1))
+
+==============================================================================
+
+5. Window <A HREF="index.html#objects">objects</A>					*<A NAME="python-window"></A><B>python-window</B>*
+
+Window <A HREF="index.html#objects">objects</A> represent vim <A HREF="windows.html#windows">windows</A>.  You can obtain them in a number of ways:
+	- via vim.current.window (|<A HREF="#python-current">python-current</A>|)
+	- from indexing vim.windows (|<A HREF="#python-windows">python-windows</A>|)
+
+You can manipulate <A HREF="windows.html#window">window</A> <A HREF="index.html#objects">objects</A> only through their attributes.  They have no
+methods, and no sequence or other interface.
+
+Window attributes are:
+	buffer (read-only)	The buffer displayed in this <A HREF="windows.html#window">window</A>
+	cursor (read-write)	The current cursor position in the <A HREF="windows.html#window">window</A>
+				This is a tuple, (row,col).
+	height (read-write)	The <A HREF="windows.html#window">window</A> height, in rows
+	width (read-write)	The <A HREF="windows.html#window">window</A> width, in columns
+The height attribute is writable only if the screen is split horizontally.
+The width attribute is writable only if the screen is split vertically.
+
+==============================================================================
+
+6. Dynamic loading					*<A NAME="python-dynamic"></A><B>python-dynamic</B>*
+
+On <A HREF="os_win32.html#MS-Windows">MS-Windows</A> the <A HREF="#Python">Python</A> library can be loaded dynamically.  The |<A HREF="various.html#:version">:version</A>|
+output then includes |<A HREF="various.html#+python/dyn">+python/dyn</A>|.
+
+This means that Vim will search for the <A HREF="#Python">Python</A> DLL file only when needed.
+When you don't use the <A HREF="#Python">Python</A> interface you don't need <A HREF="motion.html#it">it</A>, thus you can use
+Vim without this DLL file.
+
+To use the <A HREF="#Python">Python</A> interface the <A HREF="#Python">Python</A> DLL must be in your search path.  In a
+console <A HREF="windows.html#window">window</A> type &quot;path&quot; to see what directories are used.
+
+The name of the DLL must match the <A HREF="#Python">Python</A> version Vim was compiled with.
+Currently the name is &quot;python24.dll&quot;.  That is for <A HREF="#Python">Python</A> 2.4.  To know for
+sure edit &quot;gvim.exe&quot; and search for &quot;python\d*.dll\c&quot;.
+
+==============================================================================
+
+7. <A HREF="#Python">Python</A> 3						*<A NAME="python3"></A><B>python3</B>*
+
+
+							*<A NAME=":py3"></A><B>:py3</B>* *<A NAME=":python3"></A><B>:python3</B>*
+The |<A HREF="#:py3">:py3</A>| and |<A HREF="#:python3">:python3</A>| commands work similar to |<A HREF="#:python">:python</A>|.
+
+							*<A NAME=":py3file"></A><B>:py3file</B>*
+The |<A HREF="#:py3file">:py3file</A>| command works similar to |<A HREF="#:pyfile">:pyfile</A>|.
+
+Vim can be built in four ways (:version output):
+1. No <A HREF="#Python">Python</A> support	    (-python, -python3)
+2. <A HREF="#Python">Python</A> 2 support only    (+python or <A HREF="various.html#+python/dyn">+python/dyn</A>, -python3)
+3. <A HREF="#Python">Python</A> 3 support only    (-python, <A HREF="various.html#+python3">+python3</A> or <A HREF="various.html#+python3/dyn">+python3/dyn</A>)
+4. <A HREF="#Python">Python</A> 2 and 3 support   (+python/dyn, <A HREF="various.html#+python3/dyn">+python3/dyn</A>)
+
+Some more details on the special <A HREF="change.html#case">case</A> 4:
+
+When <A HREF="#Python">Python</A> 2 and <A HREF="#Python">Python</A> 3 are both supported they must be loaded dynamically.
+
+When doing this on Linux/Unix systems and importing global symbols, this leads
+to a crash when the second <A HREF="#Python">Python</A> version is used.  So either global symbols
+are loaded but only one <A HREF="#Python">Python</A> version is activated, or no global symbols are
+loaded. The latter makes Python's &quot;import&quot; fail on libaries that expect the
+symbols to be provided by Vim.
+
+							*<A NAME="E836"></A><B>E836</B>* *<A NAME="E837"></A><B>E837</B>*
+Vim's configuration <A HREF="usr_41.html#script">script</A> makes a guess for all libraries based on one
+standard <A HREF="#Python">Python</A> library (termios).  If importing this library succeeds for
+both <A HREF="#Python">Python</A> versions, then both will be made available in Vim at the same
+time.  If not, only the version first used in a session will be enabled.
+When trying to use the other one you will get the <A HREF="#E836">E836</A> or <A HREF="#E837">E837</A> error message.
+
+Here Vim's behavior depends on the system in which <A HREF="motion.html#it">it</A> was configured.  In a
+system where both versions of <A HREF="#Python">Python</A> were configured with --enable-shared,
+both versions of <A HREF="#Python">Python</A> will be activated at the same time.  There will still
+be problems with other third party libraries that were not linked to
+libPython.
+
+To work around such problems there are these <A HREF="options.html#options">options</A>:
+1. The problematic library is recompiled to link to the according
+   libpython.so.
+2. Vim is recompiled for only one <A HREF="#Python">Python</A> version.
+3. You undefine PY_NO_RTLD_GLOBAL in auto/config.h after configuration.  This
+   may crash Vim though.
+
+
+==============================================================================
+<A HREF="#top">top</A> - <A HREF="index.html">main help file</A>
+</PRE>
+</BODY>
+
+
+</HTML>
