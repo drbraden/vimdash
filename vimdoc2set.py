@@ -24,11 +24,17 @@ for fn in os.listdir(docpath):
             #    print 'name: %s, path: %s' % (name, fn)
 
             if 'href' in a.attrs.keys():
-                name = a.text
+                name = a.text.strip("'")
                 anchor = a.attrs['href']
-                if '#' in anchor: path = anchor
-                else: path = fn
-                cur.execute('DELETE FROM searchIndex WHERE name = ? AND type = ? AND path = ?', (name, 'func', path)) # Last-in-wins dedup
+              
+                try:
+                    hash = anchor.index('#')
+                except:
+                    path = fn
+                else:
+                    if hash == 0: path = fn + anchor  
+
+                cur.execute('DELETE FROM searchIndex WHERE name = ? AND type = ? AND path = ?', (name, 'func', path))  # Last-in-wins dedup
                 cur.execute('INSERT INTO searchIndex(name, type, path) VALUES (?,?,?)', (name, 'func', path))
                 print 'name: %s, path: %s' % (name, path)
 
