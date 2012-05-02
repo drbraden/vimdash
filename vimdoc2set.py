@@ -1,42 +1,42 @@
 #!/usr/local/bin/python
-
-import os, sqlite3
-from bs4 import BeautifulSoup
-
-conn = sqlite3.connect('vim.docset/Contents/Resources/docSet.dsidx')
-cur = conn.cursor()
-
-cur.execute('DROP TABLE searchIndex;')
-cur.execute('CREATE TABLE searchIndex(id INTEGER PRIMARY KEY, name TEXT, type TEXT, path TEXT);')
+import os, re, sqlite3
+from bs4 import BeautifulSoup, NavigableString, Tag
 
 docpath = 'vim.docset/Contents/Resources/Documents'
+db = sqlite3.connect('vim.docset/Contents/Resources/docSet.dsidx')
 
+cur = db.cursor()
+try: cur.execute('DROP TABLE searchIndex;')
+except: pass
+cur.execute('CREATE TABLE searchIndex(id INTEGER PRIMARY KEY, name TEXT, type TEXT, path TEXT);')
+cur.execute('CREATE UNIQUE INDEX anchor ON searchIndex (name, type, path);')
+
+any = re.compile('.*')
 for fn in os.listdir(docpath):
     if os.path.splitext(fn)[1] == '.html':
-
+        print fn
         page = open(os.path.join(docpath,fn)).read()
         soup = BeautifulSoup(page)
     
-        for a in soup.find_all('a'):
-            #if 'name' in a.attrs.keys():
-            #    name = a.attrs['name']
-            #    cur.execute('INSERT INTO searchIndex(name, type, path) VALUES (?,?,?)', (name, 'func', fn))
-            #    print 'name: %s, path: %s' % (name, fn)
+        for tag in soup.find_all('a', {'name':any}):
+            name = tag.attrs['name'].strip("'")
+            
+            # Vim helptag?
+            try: helptag = tag.previous_sibling.strip()[-1] == '*' and tag.next_sibling.next_sibling.strip()[0] == '*'
+            except: helptag = False
+            # Chapter link?
+            try:
+                float(name)
+                helptag = False
+            except: pass
+            # Text file link?
+            try: helptag = name[-4:] != '.txt'  # File link?
+            except: pass
 
-            if 'href' in a.attrs.keys():
-                name = a.text.strip("'")
-                anchor = a.attrs['href']
-              
-                try:
-                    hash = anchor.index('#')
-                except:
-                    path = fn
-                else:
-                    if hash == 0: path = fn + anchor  
+            if helptag:
+                path = '%s#%s' % (fn, name)
+                cur.execute('INSERT OR IGNORE INTO searchIndex(name, type, path) VALUES (?,?,?)', (name, 'cat', path))
+                print '  name: %s, path: %s' % (name, path)
 
-                cur.execute('DELETE FROM searchIndex WHERE name = ? AND type = ? AND path = ?', (name, 'func', path))  # Last-in-wins dedup
-                cur.execute('INSERT INTO searchIndex(name, type, path) VALUES (?,?,?)', (name, 'func', path))
-                print 'name: %s, path: %s' % (name, path)
-
-conn.commit()
-conn.close()
+db.commit()
+db.close()
