@@ -3,4 +3,4 @@ vimdash
 
 Vim docset for Dash (http://kapeli.com/dash/)
 
-A work-in-proggress
+Index script attempts to detect helptags in the HTML docs, and present them as Dash search keys.
